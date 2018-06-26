@@ -80,5 +80,7 @@ def test_loss(model, test_dl = test_dl):
 def save_model(m, p): 
 	torch.save(m.state_dict(), p)
 
-train_epochs(model, train_dl)
+run_model = False
+if run_model:
+	train_epochs(model, train_dl)
 
