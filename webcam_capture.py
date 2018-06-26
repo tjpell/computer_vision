@@ -1,16 +1,28 @@
-from collections import deque
+import os
 import cv2
-import numpy as np
-from pathlib import Path
+import copy
 import torch
+import random
+import argparse
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils import data
+import torch.nn.functional as F
+import torchvision.models as models
+
+from collections import deque
+from pathlib import Path
+from scipy import ndimage
+from torchvision import datasets, transforms
+from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
 
 from mnist_data import train_dl, test_dl
 from logistic_regression_torch import LogisticRegression
+from dig_rec_nn import get_model
 
 models_path = Path('models/')
 input_dim = 28
@@ -40,6 +52,9 @@ def main():
     lr_model = LogisticRegression(input_size, n_classes)
     load_model(lr_model, models_path/'LR_model.pth')
 
+    net = get_model()
+    load_model(net, models_path/'nn_digit.p')
+
 
 
     cap = cv2.VideoCapture(0)
@@ -51,7 +66,6 @@ def main():
     flag = 0
     ans1 = ''
     ans2 = ''
-    ans3 = ''
 
     if 1 == 0:
         while (cap.isOpened()):
@@ -101,15 +115,14 @@ def main():
                             newImage = newImage.flatten()
                             newImage = newImage.reshape(newImage.shape[0], 1)
                             ans1 = torch.argmax(lr_model(newImage), 1)#Digit_Recognizer_LR.predict(w_LR, b_LR, newImage)
-                            ans2 = Digit_Recognizer_NN.predict_nn(d2, newImage)
-                            ans3 = Digit_Recognizer_DL.predict(d3, newImage)
+                            ans2 = torch.argmax(net(newImage), 1).numpy()[0] #Digit_Recognizer_NN.predict_nn(d2, newImage)
                 pts = deque(maxlen=512)
                 blackboard = np.zeros((480, 640, 3), dtype=np.uint8)
             cv2.putText(img, "Logistic Regression : " + str(ans1), (10, 410),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            cv2.putText(img, "Shallow Network :  " + str(ans2), (10, 440),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            cv2.putText(img, "Deep Network :  " + str(ans3), (10, 470),
+            # cv2.putText(img, "Shallow Network :  " + str(ans2), (10, 440),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            cv2.putText(img, "Neural Network :  " + str(ans3), (10, 470),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             cv2.imshow("Frame", img)
             k = cv2.waitKey(10)
@@ -134,16 +147,16 @@ def main():
                     newImage = newImage.flatten()
                     newImage = torch.Tensor(newImage.reshape(newImage.shape[0], 1)).view(-1, input_size)
                     ans1 = torch.argmax(lr_model(newImage), 1).numpy()[0]#Digit_Recognizer_LR.predict(w_LR, b_LR, newImage)
-                    ans2 = 2#Digit_Recognizer_NN.predict_nn(d2, newImage)
-                    ans3 = 3#Digit_Recognizer_DL.predict(d3, newImage)
+                    ans2 = torch.argmax(net(newImage), 1).numpy()[0]#Digit_Recognizer_NN.predict_nn(d2, newImage)
+                    
 
             x, y, w, h = 0, 0, 300, 300
             cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
             cv2.putText(img, "Logistic Regression : " + str(ans1), (10, 320),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            cv2.putText(img, "Shallow Network :  " + str(ans2), (10, 350),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            cv2.putText(img, "Deep Network :  " + str(ans3), (10, 380),
+            # cv2.putText(img, "Shallow Network :  " + str(ans2), (10, 350),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            cv2.putText(img, "Neural Network :  " + str(ans2), (10, 380),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             cv2.imshow("Frame", img)
             cv2.imshow("Contours", thresh)
